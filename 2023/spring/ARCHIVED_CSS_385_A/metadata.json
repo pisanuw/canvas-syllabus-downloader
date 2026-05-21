@@ -1,0 +1,24 @@
+{
+  "course_id": 1647784,
+  "name": "ARCHIVED: CSS 385 A Sp 23: Introduction To Game Development",
+  "course_code": "ARCHIVED: CSS 385 A",
+  "term": "Spring 2023",
+  "year": "2023",
+  "quarter": "spring",
+  "syllabus_url": "https://canvas.uw.edu/courses/1647784/assignments/syllabus",
+  "has_syllabus_body": true,
+  "files": [],
+  "pages": [
+    {
+      "title": "Syllabus Addendum",
+      "url": "syllabus-addendum",
+      "html_url": "https://canvas.uw.edu/courses/1647784/pages/syllabus-addendum"
+    },
+    {
+      "title": "Course Syllabus",
+      "url": "course-syllabus",
+      "html_url": "https://canvas.uw.edu/courses/1647784/pages/course-syllabus"
+    }
+  ],
+  "downloaded_at": "2026-05-21T18:48:49.313913+00:00"
+}
