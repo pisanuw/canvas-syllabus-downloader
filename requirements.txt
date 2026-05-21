@@ -2,3 +2,10 @@ requests>=2.31
 python-dotenv>=1.0
 PyGithub>=2.3
 html2text>=2024.2.26
+
+# HTML -> PDF rendering (pure-pip, no system libraries required)
+xhtml2pdf>=0.2.16
+
+# Optional: higher-fidelity PDF output. Used automatically if installed, but
+# requires system libraries (pango/cairo). Uncomment to opt in.
+# weasyprint>=62.0

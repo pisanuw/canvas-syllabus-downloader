@@ -8,8 +8,10 @@ enrollment filter, or --term to target a specific term by name.
 Output layout:
     output/<year>/<quarter>/<COURSE_CODE>/syllabus.html
                                           syllabus.md         (if body present)
+                                          syllabus.pdf        (if body present)
                                           page_<slug>.html    (matching Pages)
                                           page_<slug>.md
+                                          page_<slug>.pdf
                                           metadata.json
                                           <any attached syllabus files>
 """
@@ -48,6 +50,55 @@ def to_markdown(html):
     return handler.handle(html)
 
 
+def _wrap_html(body, title):
+    """Wrap a Canvas HTML fragment in a minimal printable document."""
+    if "<html" in (body or "").lower():
+        return body
+    return (
+        "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        f"<title>{title}</title>"
+        "<style>body{font-family:Helvetica,Arial,sans-serif;font-size:11pt;"
+        "line-height:1.4;margin:2cm;} img{max-width:100%;} "
+        "table{border-collapse:collapse;} td,th{border:1px solid #999;padding:4px;}"
+        "</style></head><body>" + (body or "") + "</body></html>"
+    )
+
+
+def pdf_backend():
+    """Return the best available HTML->PDF backend, or None."""
+    try:
+        import weasyprint  # noqa: F401  (best fidelity; needs system libs)
+        return "weasyprint"
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        import xhtml2pdf  # noqa: F401  (pure-pip fallback)
+        return "xhtml2pdf"
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def to_pdf(html, dest_path, backend, title="Syllabus"):
+    """Render an HTML fragment to PDF using `backend`. Returns True on success."""
+    full = _wrap_html(html, title)
+    if backend == "weasyprint":
+        from weasyprint import HTML
+        HTML(string=full).write_pdf(str(dest_path))
+        return True
+    if backend == "xhtml2pdf":
+        from xhtml2pdf import pisa
+        with open(dest_path, "wb") as fh:
+            result = pisa.CreatePDF(full, dest=fh, encoding="utf-8")
+        if result.err:
+            try:
+                Path(dest_path).unlink()
+            except OSError:
+                pass
+            return False
+        return True
+    return False
+
+
 def build_parser():
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -82,6 +133,11 @@ def build_parser():
         action="store_true",
         help="Skip searching course Pages for a syllabus page.",
     )
+    p.add_argument(
+        "--no-pdf",
+        action="store_true",
+        help="Skip rendering PDF versions of the syllabus HTML.",
+    )
     p.add_argument("-v", "--verbose", action="store_true")
     return p
 
@@ -104,6 +160,13 @@ def main(argv=None):
     current_yq = (str(now.year), quarter_from_month(now.month))
     out_root = Path(args.output)
     downloaded = 0
+
+    backend = None if args.no_pdf else pdf_backend()
+    if not args.no_pdf and backend is None:
+        print(
+            "Note: no PDF backend installed; skipping PDFs. "
+            "Enable with: pip install xhtml2pdf  (or weasyprint)."
+        )
 
     for course in courses:
         term = course.get("term") or {}
@@ -128,6 +191,13 @@ def main(argv=None):
         md = to_markdown(body) if body.strip() else None
         if md:
             (course_dir / "syllabus.md").write_text(md, encoding="utf-8")
+        if backend and body.strip():
+            try:
+                to_pdf(body, course_dir / "syllabus.pdf", backend,
+                       title=course.get("name") or "Syllabus")
+            except Exception as exc:  # noqa: BLE001 - best-effort
+                if args.verbose:
+                    print(f"    ! syllabus PDF failed: {exc}")
 
         files_saved = []
         if not args.no_files:
@@ -156,6 +226,13 @@ def main(argv=None):
                 page_md = to_markdown(page_body)
                 if page_md:
                     (course_dir / f"page_{pslug}.md").write_text(page_md, encoding="utf-8")
+                if backend:
+                    try:
+                        to_pdf(page_body, course_dir / f"page_{pslug}.pdf", backend,
+                               title=pg.get("title") or "Syllabus")
+                    except Exception as exc:  # noqa: BLE001 - best-effort
+                        if args.verbose:
+                            print(f"    ! page PDF failed for '{pslug}': {exc}")
                 pages_saved.append(
                     {"title": pg.get("title"), "url": pg.get("url"),
                      "html_url": pg.get("html_url")}

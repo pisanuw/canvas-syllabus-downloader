@@ -18,16 +18,19 @@ For each matching course:
 ```
 output/2026/spring/CSE_142_A/
 ├── syllabus.html      # the Canvas "Syllabus" body (raw HTML)
-├── syllabus.md        # Markdown rendering of the same (if body is non-empty)
+├── syllabus.md        # Markdown rendering (if body is non-empty)
+├── syllabus.pdf       # PDF rendering (if body is non-empty)
 ├── page_<slug>.html   # any Canvas Page whose title matches "syllabus"
 ├── page_<slug>.md     # Markdown rendering of that page
+├── page_<slug>.pdf    # PDF rendering of that page
 ├── metadata.json      # course id, name, code, term, source URL, files, pages
 └── <attached files>   # any course file whose name matches "syllabus" (e.g. a PDF)
 ```
 
-The script looks for the syllabus in three places: the **Syllabus tab** body,
-any **Page** whose title contains "syllabus", and course **files** named like
-*syllabus*. Use `--no-pages` / `--no-files` to skip the latter two.
+The Canvas Syllabus tab and Pages are returned as **HTML**; the script also
+writes **Markdown** (`html2text`) and **PDF** (`xhtml2pdf`, or WeasyPrint if
+installed) versions. Attached course files are kept in their original format.
+Use `--no-pdf` / `--no-pages` / `--no-files` to skip any of these.
 
 `year` and `quarter` come from the Canvas **term** (e.g. `Spring 2026`), falling
 back to the term's start date, then a UW month-based heuristic.
