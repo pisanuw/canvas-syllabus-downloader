@@ -7,7 +7,9 @@ enrollment filter, or --term to target a specific term by name.
 
 Output layout:
     output/<year>/<quarter>/<COURSE_CODE>/syllabus.html
-                                          syllabus.md        (if body present)
+                                          syllabus.md         (if body present)
+                                          page_<slug>.html    (matching Pages)
+                                          page_<slug>.md
                                           metadata.json
                                           <any attached syllabus files>
 """
@@ -75,6 +77,11 @@ def build_parser():
         action="store_true",
         help="Save only syllabus_body; skip downloading attached syllabus files.",
     )
+    p.add_argument(
+        "--no-pages",
+        action="store_true",
+        help="Skip searching course Pages for a syllabus page.",
+    )
     p.add_argument("-v", "--verbose", action="store_true")
     return p
 
@@ -133,6 +140,27 @@ def main(argv=None):
                     if args.verbose:
                         print(f"    ! could not download {fname}: {exc}")
 
+        pages_saved = []
+        if not args.no_pages:
+            for pg in client.search_pages(course["id"]):
+                try:
+                    page_body = client.get_page_body(course["id"], pg["url"])
+                except Exception as exc:  # noqa: BLE001 - best-effort per page
+                    if args.verbose:
+                        print(f"    ! could not fetch page '{pg.get('url')}': {exc}")
+                    continue
+                if not page_body.strip():
+                    continue
+                pslug = slug(pg.get("url") or pg.get("title") or "page")
+                (course_dir / f"page_{pslug}.html").write_text(page_body, encoding="utf-8")
+                page_md = to_markdown(page_body)
+                if page_md:
+                    (course_dir / f"page_{pslug}.md").write_text(page_md, encoding="utf-8")
+                pages_saved.append(
+                    {"title": pg.get("title"), "url": pg.get("url"),
+                     "html_url": pg.get("html_url")}
+                )
+
         meta = {
             "course_id": course["id"],
             "name": course.get("name"),
@@ -143,6 +171,7 @@ def main(argv=None):
             "syllabus_url": f"{client.base_url}/courses/{course['id']}/assignments/syllabus",
             "has_syllabus_body": bool(body.strip()),
             "files": files_saved,
+            "pages": pages_saved,
             "downloaded_at": now.isoformat(),
         }
         (course_dir / "metadata.json").write_text(
@@ -150,7 +179,11 @@ def main(argv=None):
         )
 
         status = "body" if body.strip() else "no-body"
-        extra = f" +{len(files_saved)} file(s)" if files_saved else ""
+        extra = ""
+        if files_saved:
+            extra += f" +{len(files_saved)} file(s)"
+        if pages_saved:
+            extra += f" +{len(pages_saved)} page(s)"
         print(f"  {year}/{quarter}/{code}  [{status}{extra}]  {course.get('name')}")
         downloaded += 1
 

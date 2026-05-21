@@ -121,6 +121,24 @@ class CanvasClient:
             # Files tab may be disabled or forbidden for this course.
             return []
 
+    def search_pages(self, course_id, search_term="syllabus"):
+        """Return page summaries whose title matches `search_term` (no body)."""
+        try:
+            return list(
+                self._paginate(f"courses/{course_id}/pages", {"search_term": search_term})
+            )
+        except requests.HTTPError:
+            # Pages tab may be disabled or forbidden for this course.
+            return []
+
+    def get_page_body(self, course_id, page_url):
+        """Fetch a single page's HTML body by its url slug (or page id)."""
+        resp = self.session.get(
+            f"{self.base_url}/api/v1/courses/{course_id}/pages/{page_url}", timeout=30
+        )
+        resp.raise_for_status()
+        return resp.json().get("body") or ""
+
     def download_file(self, url, dest_path):
         resp = self.session.get(url, timeout=60)
         resp.raise_for_status()

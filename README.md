@@ -19,9 +19,15 @@ For each matching course:
 output/2026/spring/CSE_142_A/
 ├── syllabus.html      # the Canvas "Syllabus" body (raw HTML)
 ├── syllabus.md        # Markdown rendering of the same (if body is non-empty)
-├── metadata.json      # course id, name, code, term, source URL, timestamp
+├── page_<slug>.html   # any Canvas Page whose title matches "syllabus"
+├── page_<slug>.md     # Markdown rendering of that page
+├── metadata.json      # course id, name, code, term, source URL, files, pages
 └── <attached files>   # any course file whose name matches "syllabus" (e.g. a PDF)
 ```
+
+The script looks for the syllabus in three places: the **Syllabus tab** body,
+any **Page** whose title contains "syllabus", and course **files** named like
+*syllabus*. Use `--no-pages` / `--no-files` to skip the latter two.
 
 `year` and `quarter` come from the Canvas **term** (e.g. `Spring 2026`), falling
 back to the term's start date, then a UW month-based heuristic.
@@ -96,9 +102,10 @@ python upload_to_github.py --message "Spring 2026 syllabi"
 
 ## Notes & limitations
 
-- "Syllabus" means the Canvas syllabus **body** plus course files named like
-  *syllabus*. If your syllabus lives elsewhere (a Page, a module item), point
-  `--role`/`--term` as needed or extend `canvas_client.py`.
+- "Syllabus" means the Canvas syllabus **body**, any **Page** whose title
+  contains *syllabus*, plus course **files** named like *syllabus*. If your
+  syllabus lives on a Page with an unrelated title (e.g. "Course Overview"),
+  rename it or extend the `search_pages` term in `canvas_client.py`.
 - A course with an empty syllabus body still produces a folder + `metadata.json`
   (`has_syllabus_body: false`) so you can see what was checked.
 - The "current quarter" detection uses Canvas term dates when present; if a term
